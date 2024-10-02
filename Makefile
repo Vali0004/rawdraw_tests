@@ -21,3 +21,6 @@ rawdraw_tests.exe : rawdraw_tests.c
 
 clean : 
 	rm -rf *.o *~ rawdraw.exe rawdraw_tests.exe
+
+cleanwin : 
+	del rawdraw.exe;del rawdraw_tests.exe

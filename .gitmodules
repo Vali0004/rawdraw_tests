@@ -1,0 +1,6 @@
+[submodule "rawdraw"]
+	path = rawdraw
+	url = https://github.com/cntools/rawdraw
+[submodule "Nuklear"]
+	path = Nuklear
+	url = https://github.com/Immediate-Mode-UI/Nuklear
