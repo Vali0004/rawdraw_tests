@@ -49,7 +49,7 @@ int main()
 
 	nk_cnfg_init("Nuklear + RawDraw", WINDOW_WIDTH, WINDOW_HEIGHT, ctx);
 
-	default_font = nk_cnfg_font_load_from_file("C:\\Windows\\Fonts\\arial.ttf", 20.f);
+	default_font = nk_cnfg_font_load_from_file("Roboto-Regular.ttf", 20.f);
 	nk_cnfg_set_font(ctx, default_font);
 
 	printf("Init nuklear and RawDraw\n");

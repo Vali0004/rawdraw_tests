@@ -637,12 +637,10 @@ NK_INTERN void nk_cnfg_render(struct nk_context* ctx)
 {
 	const struct nk_command* cmd;
 
-	// Clear screen (fill with black background)
 	struct nk_color color = nk_rgb_cf(bg_color);
 	CNFGBGColor = NK_CNFG_COLOR(color);
 	CNFGClearFrame();
 
-	// Iterate through and handle Nuklear drawing commands
 	nk_foreach(cmd, ctx)
 	{
 		switch (cmd->type)
@@ -761,7 +759,7 @@ NK_INTERN void nk_cnfg_render(struct nk_context* ctx)
 		}
 	}
 
-	// Swap buffers
+	nk_clear(ctx);
 	CNFGSwapBuffers();
 }
 
@@ -770,73 +768,76 @@ void nk_cnfg_input_key(struct nk_context* ctx, int keycode, int bDown)
 	switch (keycode)
 	{
 		case CNFG_KEY_LEFT_ARROW:
-		nk_input_key(ctx, NK_KEY_LEFT, bDown);
-		break;
+		{
+			nk_input_key(ctx, NK_KEY_LEFT, bDown);
+		} break;
 		case CNFG_KEY_RIGHT_ARROW:
-		nk_input_key(ctx, NK_KEY_RIGHT, bDown);
-		break;
+		{
+			nk_input_key(ctx, NK_KEY_RIGHT, bDown);
+		} break;
 		case CNFG_KEY_TOP_ARROW:
-		nk_input_key(ctx, NK_KEY_UP, bDown);
-		break;
+		{
+			nk_input_key(ctx, NK_KEY_UP, bDown);
+		} break;
 		case CNFG_KEY_BOTTOM_ARROW:
-		nk_input_key(ctx, NK_KEY_DOWN, bDown);
-		break;
+		{
+			nk_input_key(ctx, NK_KEY_DOWN, bDown);
+		} break;
 		case CNFG_KEY_ENTER:
-		nk_input_key(ctx, NK_KEY_ENTER, bDown);
-		break;
+		{
+			nk_input_key(ctx, NK_KEY_ENTER, bDown);
+		} break;
 		case CNFG_KEY_BACKSPACE:
-		nk_input_key(ctx, NK_KEY_BACKSPACE, bDown);
-		break;
+		{
+			nk_input_key(ctx, NK_KEY_BACKSPACE, bDown);
+		} break;
 		default:
-		// Handle other keys if needed
-		break;
+		{
+
+		} break;
 	}
 }
 
-// Wrapping HandleButton for Nuklear context
 void nk_cnfg_input_button(struct nk_context* ctx, int x, int y, int button, int bDown)
 {
 	switch (button)
 	{
-		case 1:  // Left mouse button
-		nk_input_button(ctx, NK_BUTTON_LEFT, x, y, bDown);
-		break;
-		case 2:  // Right mouse button
-		nk_input_button(ctx, NK_BUTTON_RIGHT, x, y, bDown);
-		break;
-		case 3:  // Middle mouse button
-		nk_input_button(ctx, NK_BUTTON_MIDDLE, x, y, bDown);
-		break;
+		case 1:
+		{
+			nk_input_button(ctx, NK_BUTTON_LEFT, x, y, bDown);
+		} break;
+		case 2:
+		{
+			nk_input_button(ctx, NK_BUTTON_RIGHT, x, y, bDown);
+		} break;
+		case 3:
+		{
+			nk_input_button(ctx, NK_BUTTON_MIDDLE, x, y, bDown);
+		} break;
 		default:
-		// Handle additional buttons if necessary
-		break;
+		{
+		} break;
 	}
 }
 
-// Wrapping HandleMotion for Nuklear context
 void nk_cnfg_input_motion(struct nk_context* ctx, int x, int y)
 {
 	nk_input_motion(ctx, x, y);
 }
 
-// Wrapping HandleScroll for Nuklear context
 void nk_cnfg_input_scroll(struct nk_context* ctx, float scroll_x, float scroll_y)
 {
 	struct nk_vec2 scroll = nk_vec2(scroll_x, scroll_y);
 	nk_input_scroll(ctx, scroll);
 }
 
-// Wrapping HandleChar for Nuklear context (text input)
 void nk_cnfg_input_char(struct nk_context* ctx, char c)
 {
 	nk_input_char(ctx, c);
 }
 
-// Nuklear Cleanup (HandleDestroy wrapper)
 int nk_cnfg_input_destroy(struct nk_context* ctx)
 {
-	// Cleanup code for Nuklear context if needed (e.g., freeing resources)
-	// Currently just return 0 unless error handling is required
 	return 0;
 }
 

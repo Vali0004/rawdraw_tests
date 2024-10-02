@@ -17,7 +17,7 @@ rawdraw.exe : rawdraw\rawdraw.c
 	$(MINGW32)gcc -g -o $@ $^  -lgdi32
 
 rawdraw_tests.exe : rawdraw_tests.c
-	$(MINGW32)gcc -Os -g -Irawdraw -INuklear -o $@ $^ -lgdi32
+	$(MINGW32)gcc -g -Irawdraw -INuklear -o $@ $^ -lgdi32
 
 clean : 
 	rm -rf *.o *~ rawdraw.exe rawdraw_tests.exe
