@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "Nuklear\src\stb_truetype.h"
+#include "Nuklear/src/stb_truetype.h"
 #define STB_RECT_PACK_IMPLEMENTATION
-#include "Nuklear\src\stb_rect_pack.h"
+#include "Nuklear/src/stb_rect_pack.h"
 #include "CNFG.h"
 #define NK_CNFG_COLOR(color) (uint32_t)(color.r << 24 | color.g << 16 | color.b << 8 | color.a)
 #define NK_CNFG_COLOR_SPLIT(color, packed_color) { color.r = ((uint8_t)((packed_color >> 24) & 0xFF)); color.g = ((uint8_t)((packed_color >> 16) & 0xFF)); color.b = ((uint8_t)((packed_color >> 8) & 0xFF)); color.a = ((uint8_t)(packed_color & 0xFF)); }
@@ -36,8 +36,8 @@ NK_INTERN void CNFGTackThickSegment(int x0, int y0, int x1, int y1, int thicknes
 	dx /= length;
 	dy /= length;
 
-	float px = -dy * (thickness / 2.0f);
-	float py = dx * (thickness / 2.0f);
+	float px = -dy * (thickness / 2.f);
+	float py = dx * (thickness / 2.f);
 
 	float x0p1 = x0 + px;
 	float y0p1 = y0 + py;
@@ -49,7 +49,7 @@ NK_INTERN void CNFGTackThickSegment(int x0, int y0, int x1, int y1, int thicknes
 	float x1p2 = x1 - px;
 	float y1p2 = y1 - py;
 
-	for (int i = 0; i <= thickness; i++)
+	for (int i = 0; i <= thickness; ++i)
 	{
 		float t = (float)i / thickness;
 		float ix0 = x0p1 + t * (x0p2 - x0p1);
@@ -67,9 +67,9 @@ NK_INTERN void CNFGTackCircle(short x, short y, short radius, int num_segments)
 	RDPoint* points = malloc(points_size);
 	memset(points, 0, points_size);
 
-	float theta = 2 * NK_PI / num_segments;
+	float theta = 2.f * (NK_PI / num_segments);
 
-	for (int i = 0; i < num_segments; i++)
+	for (int i = 0; i != num_segments; ++i)
 	{
 		float angle = theta * i;
 		points[i].x = x + (short)(cosf(angle) * radius);
@@ -85,12 +85,11 @@ NK_INTERN void CNFGTackFilledCircle(short x, short y, short radius, int num_segm
 	RDPoint* points = malloc(points_size);
 	memset(points, 0, points_size);
 
-	points[0].x = x;
-	points[0].y = y;
+	points[0] = (RDPoint){ x, y };
 
-	float theta = 2 * NK_PI / num_segments;
+	float theta = 2.f * (NK_PI / num_segments);
 
-	for (int i = 1; i <= num_segments; i++)
+	for (int i = 1; i <= num_segments; ++i)
 	{
 		float angle = theta * (i - 1);
 		points[i].x = x + (short)(cosf(angle) * radius);
@@ -155,18 +154,23 @@ NK_INTERN float nk_cnfg_font_text_width(nk_handle handle, float height, const ch
 	scale = stbtt_ScaleForPixelHeight(&font->font_info, height);
 
 	glyph_len = text_len = nk_utf_decode(text, &unicode, (int)len);
-	if (!glyph_len) return 0;
+	if (!glyph_len)
+		return 0;
 
 	while (text_len <= (int)len && glyph_len)
 	{
-		int advanceWidth, leftSideBearing;
+		int advance_width, left_side_bearing;
 		if (unicode == NK_UTF_INVALID)
 			break;
 
-		stbtt_GetCodepointHMetrics(&font->font_info, unicode, &advanceWidth, &leftSideBearing);
-		text_width += advanceWidth * scale;
+		int ch = unicode - font->first_codepoint;
+		if (ch > sizeof(font->packed_chars) / sizeof(font->packed_chars[0]))
+			continue;
 
-		glyph_len = nk_utf_decode(text + text_len, &unicode, (int)len - text_len);
+		stbtt_packedchar b = font->packed_chars[ch];
+		text_width += b.xadvance;
+
+		glyph_len = nk_utf_decode(text + text_len, &unicode, len - text_len);
 		text_len += glyph_len;
 	}
 	return text_width;
@@ -221,8 +225,10 @@ NK_INTERN struct nk_cnfg_font* nk_cnfg_font_load_internal(uint8_t* buffer, size_
 	f->scale = stbtt_ScaleForPixelHeight(&f->font_info, f->font_size);
 
 	f->atlas_size = (struct nk_vec2i){ 4096, 4096 };
-	
-	uint8_t* p_data = (uint8_t*)malloc(f->atlas_size.x * f->atlas_size.y);
+
+	size_t atlas_size = f->atlas_size.x * f->atlas_size.y;
+
+	uint8_t* p_data = (uint8_t*)malloc(atlas_size);
 	if (!p_data)
 	{
 		free(p_data);
@@ -230,7 +236,6 @@ NK_INTERN struct nk_cnfg_font* nk_cnfg_font_load_internal(uint8_t* buffer, size_
 		free(f);
 		return NULL;
 	}
-	size_t atlas_size = f->atlas_size.x * f->atlas_size.y;
 	memset(p_data, 0, atlas_size);
 	
 	stbtt_PackBegin(&f->pack_context, p_data, f->atlas_size.x, f->atlas_size.y, 0, 1, NULL);
@@ -240,7 +245,7 @@ NK_INTERN struct nk_cnfg_font* nk_cnfg_font_load_internal(uint8_t* buffer, size_
 	ranges[0].array_of_unicode_codepoints = 0;
 	ranges[0].first_unicode_codepoint_in_range = f->first_codepoint;
 	ranges[0].num_chars = f->num_characters;
-	ranges[0].font_size = f->font_size * 1.1f;
+	ranges[0].font_size = f->font_size;
 	stbtt_PackFontRanges(&f->pack_context, f->ttf_buffer, 0, ranges, 1);
 	stbtt_PackEnd(&f->pack_context);
 
@@ -295,7 +300,6 @@ NK_INTERN void nk_cnfg_font_destroy(struct nk_cnfg_font* f)
 	free(f);
 }
 
-#define NK_CNFG_PIXEL_ROUND(x) (float)((int)(x))
 NK_INTERN void nk_cnfg_render_character(struct nk_cnfg_font* f, float posX, float posY, char character, uint32_t color)
 {
 	if (character < 32 || character >= 128)
@@ -303,8 +307,8 @@ NK_INTERN void nk_cnfg_render_character(struct nk_cnfg_font* f, float posX, floa
 
 	stbtt_packedchar b = f->packed_chars[character - f->first_codepoint];
 
-	float x = NK_CNFG_PIXEL_ROUND(posX + b.xoff);
-	float y = NK_CNFG_PIXEL_ROUND(posY + b.yoff);
+	float x = posX + b.xoff;
+	float y = posY + b.yoff;
 	float x2 = x + (b.xoff2 - b.xoff);
 	float y2 = y + (b.yoff2 - b.yoff);
 
@@ -313,13 +317,12 @@ NK_INTERN void nk_cnfg_render_character(struct nk_cnfg_font* f, float posX, floa
 	float s1 = b.x1 / (float)f->atlas_size.x;
 	float t1 = b.y1 / (float)f->atlas_size.y;
 
-	CNFGColor(color);
 	for (int y_pixel = (int)y; y_pixel != (int)y2; ++y_pixel)
 	{
 		for (int x_pixel = (int)x; x_pixel != (int)x2; ++x_pixel)
 		{
-			int atlasX = (int)((s0 + (float)(x_pixel - x) / (x2 - x) * (s1 - s0)) * f->atlas_size.x);
-			int atlasY = (int)((t0 + (float)(y_pixel - y) / (y2 - y) * (t1 - t0)) * f->atlas_size.y);
+			int atlasX = (int)((s0 + (float)(x_pixel - x) / (x2 - x) * (s1 - s0)) * f->atlas_size.x + 1.f);
+			int atlasY = (int)((t0 + (float)(y_pixel - y) / (y2 - y) * (t1 - t0)) * f->atlas_size.y + 1.f);
 
 			uint32_t atlas_packed_color = f->atlas_bitmap[atlasY * f->atlas_size.x + atlasX];
 			struct nk_color atlas_color;
@@ -327,6 +330,7 @@ NK_INTERN void nk_cnfg_render_character(struct nk_cnfg_font* f, float posX, floa
 
 			if (atlas_color.a > 0)
 			{
+				CNFGColor(color);
 				CNFGTackPixel(x_pixel, y_pixel);
 			}
 		}
@@ -349,30 +353,29 @@ NK_INTERN void nk_cnfg_render_string(struct nk_cnfg_font* f, int posX, int posY,
 
 short scissor_x = 0, scissor_y = 0;
 short scissor_w = 0, scissor_h = 0;
-int scissor_enabled = 0;
+int scissor_clipping_enabled = 0;
 
 NK_INTERN void nk_cnfg_scissor_cmd(const struct nk_command_scissor* cmd, struct nk_context* ctx)
 {
-	// Store the scissor region
 	scissor_x = (short)cmd->x;
 	scissor_y = (short)cmd->y;
 	scissor_w = (short)cmd->w;
 	scissor_h = (short)cmd->h;
-	scissor_enabled = 1;  // Enable clipping
+	scissor_clipping_enabled = 1;
 }
 
 NK_INTERN int point_in_scissor(short x, short y)
 {
-	if (!scissor_enabled)
-		return 1; // No scissor region, allow all points
+	if (!scissor_clipping_enabled)
+		return 1;
 	return (x >= scissor_x && x <= (scissor_x + scissor_w) &&
 		y >= scissor_y && y <= (scissor_y + scissor_h));
 }
 
 NK_INTERN int rect_in_scissor(short x, short y, short w, short h)
 {
-	if (!scissor_enabled)
-		return 1; // No scissor region, allow all rectangles
+	if (!scissor_clipping_enabled)
+		return 1;
 
 	// Check if the rectangle overlaps with the scissor region
 	short x2 = x + w;
@@ -607,7 +610,7 @@ NK_INTERN void nk_cnfg_polyline_cmd(const struct nk_command_polyline* cmd, struc
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
 	CNFGColor(color);
 
-	for (int i = 0; i < cmd->point_count - 1; i++)
+	for (int i = 0; i != cmd->point_count - 1; i++)
 	{
 		CNFGTackThickSegment(cmd->points[i].x, cmd->points[i].y, cmd->points[i + 1].x, cmd->points[i + 1].y, cmd->line_thickness);
 	}

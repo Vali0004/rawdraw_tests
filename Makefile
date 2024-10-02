@@ -10,14 +10,15 @@ all : rawdraw.exe rawdraw_tests.exe
 #-CNFGOGL
 #  are incompatible.
 
+LDFLAGS:=-lgdi32#-lm -lX11 -lGL
 
 MINGW32:=C:/MinGW/bin/
 
 rawdraw.exe : rawdraw\rawdraw.c
-	$(MINGW32)gcc -g -o $@ $^  -lgdi32
+	$(MINGW32)gcc -g -o $@ $^  $(LDFLAGS)
 
 rawdraw_tests.exe : rawdraw_tests.c
-	$(MINGW32)gcc -g -Irawdraw -INuklear -o $@ $^ -lgdi32
+	$(MINGW32)gcc -g -Irawdraw -INuklear -o $@ $^ $(LDFLAGS)
 
 clean : 
 	rm -rf *.o *~ rawdraw.exe rawdraw_tests.exe
