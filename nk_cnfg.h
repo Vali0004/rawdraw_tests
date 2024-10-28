@@ -302,7 +302,7 @@ NK_INTERN void nk_cnfg_font_destroy(struct nk_cnfg_font* f)
 
 NK_INTERN void nk_cnfg_render_character(struct nk_cnfg_font* f, float posX, float posY, char character, uint32_t color)
 {
-	if (character < 32 || character >= 128)
+	if (character < f->first_codepoint || character >= (f->first_codepoint + f->num_characters))
 		return;
 
 	stbtt_packedchar b = f->packed_chars[character - f->first_codepoint];
@@ -312,17 +312,12 @@ NK_INTERN void nk_cnfg_render_character(struct nk_cnfg_font* f, float posX, floa
 	float x2 = x + (b.xoff2 - b.xoff);
 	float y2 = y + (b.yoff2 - b.yoff);
 
-	float s0 = b.x0 / (float)f->atlas_size.x;
-	float t0 = b.y0 / (float)f->atlas_size.y;
-	float s1 = b.x1 / (float)f->atlas_size.x;
-	float t1 = b.y1 / (float)f->atlas_size.y;
-
 	for (int y_pixel = (int)y; y_pixel != (int)y2; ++y_pixel)
 	{
 		for (int x_pixel = (int)x; x_pixel != (int)x2; ++x_pixel)
 		{
-			int atlasX = (int)((s0 + (float)(x_pixel - x) / (x2 - x) * (s1 - s0)) * f->atlas_size.x + 1.f);
-			int atlasY = (int)((t0 + (float)(y_pixel - y) / (y2 - y) * (t1 - t0)) * f->atlas_size.y + 1.f);
+            int atlasX = (int)(b.x0 + ((float)(x_pixel - x) / (x2 - x)) * (b.x1 - b.x0) + 1.f);
+            int atlasY = (int)(b.y0 + ((float)(y_pixel - y) / (y2 - y)) * (b.y1 - b.y0) + 1.f);
 
 			uint32_t atlas_packed_color = f->atlas_bitmap[atlasY * f->atlas_size.x + atlasX];
 			struct nk_color atlas_color;
@@ -342,12 +337,36 @@ NK_INTERN void nk_cnfg_render_string(struct nk_cnfg_font* f, int posX, int posY,
 	float scaledAscent = (float)(f->ascent - f->line_gap) * f->scale;
 	float xpos = (float)posX;
 	float ypos = (float)posY + scaledAscent;
+	int text_len = 0;
+	nk_rune unicode = 0;
+	nk_rune next = 0;
+	int glyph_len = 0;
+	int next_glyph_len = 0;
 
-	for (size_t i = 0; text[i] >= f->first_codepoint && text[i] < (f->first_codepoint + f->num_characters); ++i)
+	if (!text || !*text)
+		return;
+
+	glyph_len = nk_utf_decode(text, &unicode, strlen(text));
+	if (!glyph_len)
+		return;
+
+	while (text_len < strlen(text) && glyph_len)
 	{
-		stbtt_packedchar b = f->packed_chars[text[i] - f->first_codepoint];
-		nk_cnfg_render_character(f, xpos, ypos, text[i], color);
+		if (unicode < f->first_codepoint || unicode >= (f->first_codepoint + f->num_characters))
+		{
+			break;
+		}
+
+		stbtt_packedchar b = f->packed_chars[unicode - f->first_codepoint];
+
+		nk_cnfg_render_character(f, xpos, ypos, unicode, color);
+
 		xpos += b.xadvance;
+
+		next_glyph_len = nk_utf_decode(text + text_len + glyph_len, &next, strlen(text) - text_len);
+		text_len += glyph_len;
+		glyph_len = next_glyph_len;
+		unicode = next;
 	}
 }
 
@@ -434,6 +453,31 @@ NK_INTERN void nk_cnfg_curve_cmd(const struct nk_command_curve* cmd, struct nk_c
 		prev_y = cur_y;
 	}
 }
+void draw_line(short x0, short y0, short x1, short y1, uint32_t color)
+{
+	int dx = abs(x1 - x0);
+	int dy = abs(y1 - y0);
+	int sx = (x0 < x1) ? 1 : -1;
+	int sy = (y0 < y1) ? 1 : -1;
+	int err = dx - dy;
+	while (1)
+	{
+		CNFGColor(color);
+		if (x0 == x1 && y0 == y1)
+			break;
+		int e2 = 2 * err;
+		if (e2 > -dy)
+		{
+			err -= dy;
+			x0 += sx;
+		}
+		if (e2 < dx)
+		{
+			err += dx;
+			y0 += sy;
+		}
+	}
+}
 
 NK_INTERN void nk_cnfg_rect_cmd(const struct nk_command_rect* cmd, struct nk_context* ctx)
 {
@@ -442,10 +486,10 @@ NK_INTERN void nk_cnfg_rect_cmd(const struct nk_command_rect* cmd, struct nk_con
 
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
 	CNFGColor(color);
-	CNFGTackSegment(cmd->x, cmd->y, cmd->x + cmd->w, cmd->y);              
-	CNFGTackSegment(cmd->x, cmd->y + cmd->h, cmd->x + cmd->w, cmd->y + cmd->h);
-	CNFGTackSegment(cmd->x, cmd->y, cmd->x, cmd->y + cmd->h);              
-	CNFGTackSegment(cmd->x + cmd->w, cmd->y, cmd->x + cmd->w, cmd->y + cmd->h);
+	CNFGTackThickSegment(cmd->x, cmd->y, cmd->x + cmd->w, cmd->y, cmd->line_thickness);
+	CNFGTackThickSegment(cmd->x, cmd->y + cmd->h, cmd->x + cmd->w, cmd->y + cmd->h, cmd->line_thickness);
+	CNFGTackThickSegment(cmd->x, cmd->y, cmd->x, cmd->y + cmd->h, cmd->line_thickness);
+	CNFGTackThickSegment(cmd->x + cmd->w, cmd->y, cmd->x + cmd->w, cmd->y + cmd->h, cmd->line_thickness);
 }
 
 NK_INTERN void nk_cnfg_rect_filled_cmd(const struct nk_command_rect_filled* cmd, struct nk_context* ctx)
@@ -808,6 +852,7 @@ void nk_cnfg_input_button(struct nk_context* ctx, int x, int y, int button, int 
 		case 1:
 		{
 			nk_input_button(ctx, NK_BUTTON_LEFT, x, y, bDown);
+			return;
 		} break;
 		case 2:
 		{
@@ -820,6 +865,14 @@ void nk_cnfg_input_button(struct nk_context* ctx, int x, int y, int button, int 
 		default:
 		{
 		} break;
+	}
+	if (bDown)
+	{
+		SetCapture(CNFGlsHWND);
+	}
+	else
+	{
+		ReleaseCapture();
 	}
 }
 

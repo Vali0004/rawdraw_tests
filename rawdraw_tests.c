@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include "os_generic.h"
-#define WINDOW_WIDTH  1920
-#define WINDOW_HEIGHT 1080
+#define WINDOW_WIDTH  800
+#define WINDOW_HEIGHT 600
 
 // Make it so we don't need to include any other C files in our build.
 #define CNFG_IMPLEMENTATION
@@ -49,7 +49,7 @@ int main()
 
 	nk_cnfg_init("Nuklear + RawDraw", WINDOW_WIDTH, WINDOW_HEIGHT, ctx);
 
-	default_font = nk_cnfg_font_load_from_file("Roboto-Regular.ttf", 20.f);
+	default_font = nk_cnfg_font_load_from_file("C:\\Windows\\Fonts\\arial.ttf", 20.f);
 	nk_cnfg_set_font(ctx, default_font);
 
 	printf("Init nuklear and RawDraw\n");
@@ -57,9 +57,10 @@ int main()
 	// Main event loop
 	while (CNFGHandleInput())
 	{
-		if (nk_begin(ctx, "Demo", nk_rect(50, 50, 230, 250),
+		/* GUI */
+		if (nk_begin(ctx, "Demo", nk_rect(50, 50, 200, 200),
 			NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
-			NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
+			NK_WINDOW_CLOSABLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
 		{
 			enum {EASY, HARD};
 			static int op = EASY;
@@ -73,22 +74,9 @@ int main()
 			if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
 			nk_layout_row_dynamic(ctx, 22, 1);
 			nk_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
-
-			nk_layout_row_dynamic(ctx, 20, 1);
-			nk_label(ctx, "background:", NK_TEXT_LEFT);
-			nk_layout_row_dynamic(ctx, 25, 1);
-			if (nk_combo_begin_color(ctx, nk_rgb_cf(bg_color), nk_vec2(nk_widget_width(ctx),400))) {
-				nk_layout_row_dynamic(ctx, 120, 1);
-				bg_color = nk_color_picker(ctx, bg_color, NK_RGBA);
-				nk_layout_row_dynamic(ctx, 25, 1);
-				bg_color.r = nk_propertyf(ctx, "#R:", 0, bg_color.r, 1.0f, 0.01f,0.005f);
-				bg_color.g = nk_propertyf(ctx, "#G:", 0, bg_color.g, 1.0f, 0.01f,0.005f);
-				bg_color.b = nk_propertyf(ctx, "#B:", 0, bg_color.b, 1.0f, 0.01f,0.005f);
-				bg_color.a = nk_propertyf(ctx, "#A:", 0, bg_color.a, 1.0f, 0.01f,0.005f);
-				nk_combo_end(ctx);
-			}
 		}
 		nk_end(ctx);
+		bg_color = nk_color_cf(nk_rgb(30, 30, 30));
 
 		nk_cnfg_render(ctx);
 	}
