@@ -23,6 +23,22 @@ struct nk_cnfg_font
 	int ascent, descent, line_gap;
 };
 
+
+NK_INTERN uint32_t CNFGBlendAlpha(uint32_t color, uint8_t alpha)
+{
+	uint8_t r = (color >> 24) & 0xFF;
+	uint8_t g = (color >> 16) & 0xFF;
+	uint8_t b = (color >> 8) & 0xFF;
+	uint8_t a = color & 0xFF;
+
+	r = (r * alpha) / 255;
+	g = (g * alpha) / 255;
+	b = (b * alpha) / 255;
+	a = (a * alpha) / 255;
+
+	return (r << 24) | (g << 16) | (b << 8) | a;
+}
+
 // CNFGTackSegment does not have thickness
 NK_INTERN void CNFGTackThickSegment(int x0, int y0, int x1, int y1, int thickness)
 {
@@ -239,7 +255,6 @@ NK_INTERN struct nk_cnfg_font* nk_cnfg_font_load_internal(uint8_t* buffer, size_
 	memset(p_data, 0, atlas_size);
 	
 	stbtt_PackBegin(&f->pack_context, p_data, f->atlas_size.x, f->atlas_size.y, 0, 1, NULL);
-	stbtt_PackSetOversampling(&f->pack_context, 2, 2);
 	stbtt_pack_range ranges[1];
 	ranges[0].chardata_for_range = f->packed_chars;
 	ranges[0].array_of_unicode_codepoints = 0;
@@ -305,27 +320,24 @@ NK_INTERN void nk_cnfg_render_character(struct nk_cnfg_font* f, float posX, floa
 	if (character < f->first_codepoint || character >= (f->first_codepoint + f->num_characters))
 		return;
 
-	stbtt_packedchar b = f->packed_chars[character - f->first_codepoint];
+	stbtt_aligned_quad quad;
+	stbtt_GetPackedQuad(f->packed_chars, f->atlas_size.x, f->atlas_size.y, character - f->first_codepoint, &posX, &posY, &quad, 1);
 
-	float x = posX + b.xoff;
-	float y = posY + b.yoff;
-	float x2 = x + (b.xoff2 - b.xoff);
-	float y2 = y + (b.yoff2 - b.yoff);
-
-	for (int y_pixel = (int)y; y_pixel != (int)y2; ++y_pixel)
+	for (int y_pixel = (int)quad.y0; y_pixel < (int)quad.y1; y_pixel++)
 	{
-		for (int x_pixel = (int)x; x_pixel != (int)x2; ++x_pixel)
+		for (int x_pixel = (int)quad.x0; x_pixel < (int)quad.x1; x_pixel++)
 		{
-            int atlasX = (int)(b.x0 + ((float)(x_pixel - x) / (x2 - x)) * (b.x1 - b.x0) + 1.f);
-            int atlasY = (int)(b.y0 + ((float)(y_pixel - y) / (y2 - y)) * (b.y1 - b.y0) + 1.f);
+			int atlas_x = (int)(quad.s0 * f->atlas_size.x) + (x_pixel - (int)quad.x0);
+			int atlas_y = (int)(quad.t0 * f->atlas_size.y) + (y_pixel - (int)quad.y0);
 
-			uint32_t atlas_packed_color = f->atlas_bitmap[atlasY * f->atlas_size.x + atlasX];
+			uint32_t atlas_packed_color = f->atlas_bitmap[atlas_y * f->atlas_size.x + atlas_x];
 			struct nk_color atlas_color;
 			NK_CNFG_COLOR_SPLIT(atlas_color, atlas_packed_color);
 
 			if (atlas_color.a > 0)
 			{
-				CNFGColor(color);
+				uint32_t blended_color = CNFGBlendAlpha(color, atlas_color.a);
+				CNFGColor(blended_color);
 				CNFGTackPixel(x_pixel, y_pixel);
 			}
 		}
