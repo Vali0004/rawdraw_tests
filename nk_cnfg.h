@@ -7,6 +7,7 @@
 #include "Nuklear/src/stb_rect_pack.h"
 #include "CNFG.h"
 #include "nk_decompression.h"
+#define CNFG_SWAP(x, y) { int64_t temp = x; x = y; y = temp; }
 #define NK_CNFG_COLOR(color) (uint32_t)(color.r << 24 | color.g << 16 | color.b << 8 | color.a)
 #define NK_CNFG_COLOR_SPLIT(color, packed_color) { color.r = ((uint8_t)((packed_color >> 24) & 0xFF)); color.g = ((uint8_t)((packed_color >> 16) & 0xFF)); color.b = ((uint8_t)((packed_color >> 8) & 0xFF)); color.a = ((uint8_t)(packed_color & 0xFF)); }
 
@@ -77,7 +78,7 @@ NK_INTERN void CNFGTackThickSegment(int x0, int y0, int x1, int y1, int thicknes
 	}
 }
 
-NK_INTERN void CNFGTackCircle(short x, short y, short radius, int num_segments)
+NK_INTERN void CNFGTackCircle(int x, int y, int16_t radius, int num_segments)
 {
 	uint32_t points_size = sizeof(RDPoint) * num_segments;
 	RDPoint* points = malloc(points_size);
@@ -88,14 +89,14 @@ NK_INTERN void CNFGTackCircle(short x, short y, short radius, int num_segments)
 	for (int i = 0; i != num_segments; ++i)
 	{
 		float angle = theta * i;
-		points[i].x = x + (short)(cosf(angle) * radius);
-		points[i].y = y + (short)(sinf(angle) * radius);
+		points[i].x = x + (int16_t)(cosf(angle) * radius);
+		points[i].y = y + (int16_t)(sinf(angle) * radius);
 	}
 
 	CNFGTackPoly(points, num_segments);
 }
 
-NK_INTERN void CNFGTackFilledCircle(short x, short y, short radius, int num_segments)
+NK_INTERN void CNFGTackFilledCircle(int x, int y, int16_t radius, int num_segments)
 {
 	uint32_t points_size = sizeof(RDPoint) * (num_segments + 1);
 	RDPoint* points = malloc(points_size);
@@ -108,14 +109,14 @@ NK_INTERN void CNFGTackFilledCircle(short x, short y, short radius, int num_segm
 	for (int i = 1; i <= num_segments; ++i)
 	{
 		float angle = theta * (i - 1);
-		points[i].x = x + (short)(cosf(angle) * radius);
-		points[i].y = y + (short)(sinf(angle) * radius);
+		points[i].x = x + (int16_t)(cosf(angle) * radius);
+		points[i].y = y + (int16_t)(sinf(angle) * radius);
 	}
 
 	CNFGTackPoly(points, num_segments + 1);
 }
 
-NK_INTERN void CNFGTackArc(short x, short y, short radius, float start_angle, float end_angle, int num_segments)
+NK_INTERN void CNFGTackArc(int x, int16_t y, int16_t radius, float start_angle, float end_angle, int num_segments)
 {
 	uint32_t points_size = sizeof(RDPoint) * (num_segments + 1);
 	RDPoint* points = malloc(points_size);
@@ -126,14 +127,14 @@ NK_INTERN void CNFGTackArc(short x, short y, short radius, float start_angle, fl
 	for (int i = 0; i <= num_segments; i++)
 	{
 		float angle = start_angle + i * theta;
-		points[i].x = x + (short)(cosf(angle) * radius);
-		points[i].y = y + (short)(sinf(angle) * radius);
+		points[i].x = x + (int16_t)(cosf(angle) * radius);
+		points[i].y = y + (int16_t)(sinf(angle) * radius);
 	}
 
 	CNFGTackPoly(points, num_segments + 1);
 }
 
-NK_INTERN void CNFGTackFilledArc(short x, short y, short radius, float start_angle, float end_angle, int num_segments)
+NK_INTERN void CNFGTackFilledArc(int x, int y, int16_t radius, float start_angle, float end_angle, int num_segments)
 {
 	uint32_t points_size = sizeof(RDPoint) * (num_segments + 2);
 	RDPoint* points = malloc(points_size);
@@ -147,11 +148,22 @@ NK_INTERN void CNFGTackFilledArc(short x, short y, short radius, float start_ang
 	for (int i = 1; i <= num_segments + 1; i++)
 	{
 		float angle = start_angle + (i - 1) * theta;
-		points[i].x = x + (short)(cosf(angle) * radius);
-		points[i].y = y + (short)(sinf(angle) * radius);
+		points[i].x = x + (int16_t)(cosf(angle) * radius);
+		points[i].y = y + (int16_t)(sinf(angle) * radius);
 	}
 
 	CNFGTackPoly(points, num_segments + 2);
+}
+
+NK_INTERN void CNFGTackTriangle(int x1, int y1, int x2, int y2, int x3, int y3)
+{
+	RDPoint points[3] = {
+		{ x1, y1 },
+		{ x2, y2 },
+		{ x3, y3 }
+	};
+
+	CNFGTackPoly(points, 3);
 }
 
 NK_INTERN float nk_cnfg_font_text_width(nk_handle handle, float height, const char* text, int len)
@@ -522,20 +534,32 @@ NK_API void nk_cnfg_render_string(struct nk_cnfg_font* f, int posX, int posY, co
 	}
 }
 
-short scissor_x = 0, scissor_y = 0;
-short scissor_w = 0, scissor_h = 0;
+int16_t scissor_x = 0, scissor_y = 0;
+int16_t scissor_w = 0, scissor_h = 0;
 int scissor_clipping_enabled = 0;
 
 NK_INTERN void nk_cnfg_scissor_cmd(const struct nk_command_scissor* cmd, struct nk_context* ctx)
 {
-	scissor_x = (short)cmd->x;
-	scissor_y = (short)cmd->y;
-	scissor_w = (short)cmd->w;
-	scissor_h = (short)cmd->h;
+	scissor_x = (int16_t)cmd->x;
+	scissor_y = (int16_t)cmd->y;
+	scissor_w = (int16_t)cmd->w;
+	scissor_h = (int16_t)cmd->h;
+
+	if (scissor_x < 0)
+	{
+		scissor_w += scissor_x;
+		scissor_x = 0;
+	}
+	if (scissor_y < 0)
+	{
+		scissor_h += scissor_y;
+		scissor_y = 0;
+	}
+
 	scissor_clipping_enabled = 1;
 }
 
-NK_INTERN int nk_cnfg_point_in_scissor(short x, short y)
+NK_INTERN int nk_cnfg_point_in_scissor(int16_t x, int16_t y)
 {
 	if (!scissor_clipping_enabled)
 		return 1;
@@ -543,14 +567,13 @@ NK_INTERN int nk_cnfg_point_in_scissor(short x, short y)
 		y >= scissor_y && y <= (scissor_y + scissor_h));
 }
 
-NK_INTERN int nk_cnfg_rect_in_scissor(short x, short y, short w, short h)
+NK_INTERN int nk_cnfg_rect_in_scissor(int16_t x, int16_t y, int16_t w, int16_t h)
 {
 	if (!scissor_clipping_enabled)
 		return 1;
 
-	// Check if the rectangle overlaps with the scissor region
-	short x2 = x + w;
-	short y2 = y + h;
+	int16_t x2 = x + w;
+	int16_t y2 = y + h;
 	return !(x2 < scissor_x || x > (scissor_x + scissor_w) ||
 		y2 < scissor_y || y > (scissor_y + scissor_h));
 }
@@ -606,17 +629,179 @@ NK_INTERN void nk_cnfg_curve_cmd(const struct nk_command_curve* cmd, struct nk_c
 	}
 }
 
+NK_INTERN void nk_cnfg_stroke_arc(int16_t x0, int16_t y0, int16_t w, int16_t h, const int16_t s, const int16_t line_thickness)
+{
+	const int a2 = (w * w) / 4;
+	const int b2 = (h * h) / 4;
+	const int fa2 = 4 * a2, fb2 = 4 * b2;
+	int x, y, sigma;
+
+	NK_UNUSED(line_thickness);
+
+	if (s != 0 && s != 90 && s != 180 && s != 270)
+		return;
+	if (w < 1 || h < 1)
+		return;
+
+	/* Convert upper left to center */
+	h = (h + 1) / 2;
+	w = (w + 1) / 2;
+	x0 += w; y0 += h;
+
+	/* First half */
+	for (x = 0, y = h, sigma = 2 * b2 + a2 * (1 - 2 * h); b2 * x <= a2 * y; x++)
+	{
+		if (s == 180)
+			CNFGTackPixel(x0 + x, y0 + y);
+		else if (s == 270)
+			CNFGTackPixel(x0 - x, y0 + y);
+		else if (s == 0)
+			CNFGTackPixel(x0 + x, y0 - y);
+		else if (s == 90)
+			CNFGTackPixel(x0 - x, y0 - y);
+		if (sigma >= 0)
+		{
+			sigma += fa2 * (1 - y);
+			y--;
+		} sigma += b2 * ((4 * x) + 6);
+	}
+
+	/* Second half */
+	for (x = w, y = 0, sigma = 2 * a2 + b2 * (1 - 2 * w); a2 * y <= b2 * x; y++)
+	{
+		if (s == 180)
+			CNFGTackPixel(x0 + x, y0 + y);
+		else if (s == 270)
+			CNFGTackPixel(x0 - x, y0 + y);
+		else if (s == 0)
+			CNFGTackPixel(x0 + x, y0 - y);
+		else if (s == 90)
+			CNFGTackPixel(x0 - x, y0 - y);
+		if (sigma >= 0)
+		{
+			sigma += fb2 * (1 - x);
+			x--;
+		} sigma += a2 * ((4 * y) + 6);
+	}
+}
+
+NK_INTERN void nk_cnfg_fill_arc(int16_t x0, int16_t y0, int16_t w, int16_t h, const int16_t s)
+{
+	const int a2 = (w * w) / 4;
+	const int b2 = (h * h) / 4;
+	const int fa2 = 4 * a2, fb2 = 4 * b2;
+	int x, y, sigma;
+	RDPoint pnts[3];
+	if (w < 1 || h < 1) return;
+	if (s != 0 && s != 90 && s != 180 && s != 270)
+		return;
+
+	/* Convert upper left to center */
+	h = (h + 1) / 2;
+	w = (w + 1) / 2;
+	x0 += w;
+	y0 += h;
+
+	pnts[0].x = x0;
+	pnts[0].y = y0;
+	pnts[2].x = x0;
+	pnts[2].y = y0;
+
+	/* First half */
+	for (x = 0, y = h, sigma = 2 * b2 + a2 * (1 - 2 * h); b2 * x <= a2 * y; x++)
+	{
+		if (s == 180)
+		{
+			pnts[1].x = x0 + x; pnts[1].y = y0 + y;
+		}
+		else if (s == 270)
+		{
+			pnts[1].x = x0 - x; pnts[1].y = y0 + y;
+		}
+		else if (s == 0)
+		{
+			pnts[1].x = x0 + x; pnts[1].y = y0 - y;
+		}
+		else if (s == 90)
+		{
+			pnts[1].x = x0 - x; pnts[1].y = y0 - y;
+		}
+		CNFGTackPoly(pnts, 3);
+		pnts[2] = pnts[1];
+		if (sigma >= 0)
+		{
+			sigma += fa2 * (1 - y);
+			y--;
+		} sigma += b2 * ((4 * x) + 6);
+	}
+
+	/* Second half */
+	for (x = w, y = 0, sigma = 2 * a2 + b2 * (1 - 2 * w); a2 * y <= b2 * x; y++)
+	{
+		if (s == 180)
+		{
+			pnts[1].x = x0 + x; pnts[1].y = y0 + y;
+		}
+		else if (s == 270)
+		{
+			pnts[1].x = x0 - x; pnts[1].y = y0 + y;
+		}
+		else if (s == 0)
+		{
+			pnts[1].x = x0 + x; pnts[1].y = y0 - y;
+		}
+		else if (s == 90)
+		{
+			pnts[1].x = x0 - x; pnts[1].y = y0 - y;
+		}
+		CNFGTackPoly(pnts, 3);
+		pnts[2] = pnts[1];
+		if (sigma >= 0)
+		{
+			sigma += fb2 * (1 - x);
+			x--;
+		} sigma += a2 * ((4 * y) + 6);
+	}
+}
+
 NK_INTERN void nk_cnfg_rect_cmd(const struct nk_command_rect* cmd, struct nk_context* ctx)
 {
 	if (!nk_cnfg_rect_in_scissor(cmd->x, cmd->y, cmd->w, cmd->h))
 		return;
 
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
+	float frounding = cmd->rounding;
+	frounding = fminf(frounding, fminf(cmd->w, cmd->h) / 2.0f);
+	uint16_t rounding = (uint16_t)frounding;
 	CNFGColor(color);
-	CNFGTackThickSegment(cmd->x, cmd->y, cmd->x + cmd->w, cmd->y, cmd->line_thickness);
-	CNFGTackThickSegment(cmd->x, cmd->y + cmd->h, cmd->x + cmd->w, cmd->y + cmd->h, cmd->line_thickness);
-	CNFGTackThickSegment(cmd->x, cmd->y, cmd->x, cmd->y + cmd->h, cmd->line_thickness);
-	CNFGTackThickSegment(cmd->x + cmd->w, cmd->y, cmd->x + cmd->w, cmd->y + cmd->h, cmd->line_thickness);
+
+	//if (rounding <= 0)
+	{
+		CNFGTackThickSegment(cmd->x, cmd->y, cmd->x + cmd->w, cmd->y, cmd->line_thickness);
+		CNFGTackThickSegment(cmd->x, cmd->y + cmd->h, cmd->x + cmd->w, cmd->y + cmd->h, cmd->line_thickness);
+		CNFGTackThickSegment(cmd->x, cmd->y, cmd->x, cmd->y + cmd->h, cmd->line_thickness);
+		CNFGTackThickSegment(cmd->x + cmd->w, cmd->y, cmd->x + cmd->w, cmd->y + cmd->h, cmd->line_thickness);
+		return;
+	}
+
+	const int16_t xc = cmd->x + rounding;
+	const int16_t yc = cmd->y + rounding;
+	const int16_t wc = (int16_t)(cmd->w - 2 * rounding);
+	const int16_t hc = (int16_t)(cmd->h - 2 * rounding);
+
+	CNFGTackThickSegment(xc, cmd->y, xc + wc, cmd->y, cmd->line_thickness);
+	CNFGTackThickSegment(cmd->x + cmd->w, yc, cmd->x + cmd->w, yc + hc, cmd->line_thickness);
+	CNFGTackThickSegment(xc, cmd->y + cmd->h, xc + wc, cmd->y + cmd->h, cmd->line_thickness);
+	CNFGTackThickSegment(cmd->x, yc, cmd->x, yc + hc, cmd->line_thickness);
+
+	nk_cnfg_stroke_arc(xc + wc - rounding, cmd->y,
+		(unsigned)frounding * 2, (unsigned)frounding * 2, 0, cmd->line_thickness);
+	nk_cnfg_stroke_arc(cmd->x, cmd->y,
+		(unsigned)frounding * 2, (unsigned)frounding * 2, 90, cmd->line_thickness);
+	nk_cnfg_stroke_arc(cmd->x, yc + hc - rounding,
+		(unsigned)frounding * 2, (unsigned)frounding * 2, 270, cmd->line_thickness);
+	nk_cnfg_stroke_arc(xc + wc - rounding, yc + hc - rounding,
+		(unsigned)frounding * 2, (unsigned)frounding * 2, 180, cmd->line_thickness);
 }
 
 NK_INTERN void nk_cnfg_rect_filled_cmd(const struct nk_command_rect_filled* cmd, struct nk_context* ctx)
@@ -625,8 +810,62 @@ NK_INTERN void nk_cnfg_rect_filled_cmd(const struct nk_command_rect_filled* cmd,
 		return;
 
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
+	float frounding = cmd->rounding;
+	frounding = fminf(frounding, fminf(cmd->w, cmd->h) / 2.f);
+	uint16_t rounding = (uint16_t)frounding;
 	CNFGColor(color);
-	CNFGTackRectangle(cmd->x, cmd->y, cmd->x + cmd->w, cmd->y + cmd->h);
+
+	//if (rounding <= 0)
+	{
+		for (int i = 0; i < cmd->h; i++)
+			CNFGTackSegment(cmd->x, cmd->y + i, cmd->x + cmd->w, cmd->y + i);
+		return;
+	}
+
+	const int16_t xc = cmd->x + rounding;
+	const int16_t yc = cmd->y + rounding;
+	const int16_t wc = (int16_t)(cmd->w - 2 * rounding);
+	const int16_t hc = (int16_t)(cmd->h - 2 * rounding);
+
+	RDPoint pnts[12];
+	pnts[0].x = cmd->x;
+	pnts[0].y = yc;
+	pnts[1].x = xc;
+	pnts[1].y = yc;
+	pnts[2].x = xc;
+	pnts[2].y = cmd->y;
+
+	pnts[3].x = xc + wc;
+	pnts[3].y = cmd->y;
+	pnts[4].x = xc + wc;
+	pnts[4].y = yc;
+	pnts[5].x = cmd->x + cmd->w;
+	pnts[5].y = yc;
+
+	pnts[6].x = cmd->x + cmd->w;
+	pnts[6].y = yc + hc;
+	pnts[7].x = xc + wc;
+	pnts[7].y = yc + hc;
+	pnts[8].x = xc + wc;
+	pnts[8].y = cmd->y + cmd->h;
+
+	pnts[9].x = xc;
+	pnts[9].y = cmd->y + cmd->h;
+	pnts[10].x = xc;
+	pnts[10].y = yc + hc;
+	pnts[11].x = cmd->x;
+	pnts[11].y = yc + hc;
+
+	CNFGTackPoly(pnts, 12);
+
+	nk_cnfg_fill_arc(xc + wc - rounding, cmd->y,
+		(unsigned)frounding * 2, (unsigned)frounding * 2, 0);
+	nk_cnfg_fill_arc(cmd->x, cmd->y,
+		(unsigned)rounding * 2, (unsigned)frounding * 2, 90);
+	nk_cnfg_fill_arc(cmd->x, yc + hc - rounding,
+		(unsigned)rounding * 2, (unsigned)frounding * 2, 270);
+	nk_cnfg_fill_arc(xc + wc - rounding, yc + hc - rounding,
+		(unsigned)frounding * 2, (unsigned)frounding * 2, 180);
 }
 
 NK_INTERN void nk_cnfg_rect_multi_color_cmd(const struct nk_command_rect_multi_color* cmd, struct nk_context* ctx)
@@ -722,12 +961,7 @@ NK_INTERN void nk_cnfg_triangle_filled_cmd(const struct nk_command_triangle_fill
 
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
 	CNFGColor(color);
-	RDPoint points[3] = {
-		{ cmd->a.x, cmd->a.y },
-		{ cmd->b.x, cmd->b.y },
-		{ cmd->c.x, cmd->c.y }
-	};
-	CNFGTackPoly(points, 3);
+	CNFGTackTriangle(cmd->a.x, cmd->a.y, cmd->b.x, cmd->b.y, cmd->c.x, cmd->c.y);
 }
 
 NK_INTERN void nk_cnfg_polygon_cmd(const struct nk_command_polygon* cmd, struct nk_context* ctx)
