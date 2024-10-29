@@ -2,6 +2,5 @@
 ## Info
   * This is my test repo for rawdraw and Nuklear implementation for rawdraw
 ## Current problems
-  * Font kerning
   * Unfinished input implementation
-  * Code readability
+  * Fix some rendering commands
