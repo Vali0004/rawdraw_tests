@@ -49,14 +49,21 @@ int main()
 
 	nk_cnfg_init("Nuklear + RawDraw", WINDOW_WIDTH, WINDOW_HEIGHT, ctx);
 
-	default_font = nk_cnfg_font_load_from_file("C:\\Windows\\Fonts\\arial.ttf", 20.f);
+	default_font = nk_cnfg_font_load_from_file("Roboto-Regular.ttf", 20.f);
 	nk_cnfg_set_font(ctx, default_font);
 
 	printf("Init nuklear and RawDraw\n");
 
 	// Main event loop
-	while (CNFGHandleInput())
+	while (1)
 	{
+		nk_input_begin(ctx);
+		if (!CNFGHandleInput())
+		{
+			break;
+		}
+		nk_input_end(ctx);
+
 		/* GUI */
 		if (nk_begin(ctx, "Demo", nk_rect(50, 50, 200, 200),
 			NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|

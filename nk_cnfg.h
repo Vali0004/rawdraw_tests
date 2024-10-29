@@ -23,7 +23,6 @@ struct nk_cnfg_font
 	int ascent, descent, line_gap;
 };
 
-
 NK_INTERN uint32_t CNFGBlendAlpha(uint32_t color, uint8_t alpha)
 {
 	uint8_t r = (color >> 24) & 0xFF;
@@ -558,14 +557,14 @@ NK_INTERN void nk_cnfg_circle_cmd(const struct nk_command_circle* cmd, struct nk
 {
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
 	CNFGColor(color);
-	CNFGTackCircle(cmd->x + cmd->w / 2, cmd->y + cmd->h / 2, cmd->w / 2, 32); // 32 segments for a smooth circle
+	CNFGTackCircle(cmd->x + cmd->w / 2, cmd->y + cmd->h / 2, cmd->w / 2, 64);
 }
 
 NK_INTERN void nk_cnfg_circle_filled_cmd(const struct nk_command_circle_filled* cmd, struct nk_context* ctx)
 {
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
 	CNFGColor(color);
-	CNFGTackFilledCircle(cmd->x + cmd->w / 2, cmd->y + cmd->h / 2, cmd->w / 2, 32); // 32 segments for a smooth filled circle
+	CNFGTackFilledCircle(cmd->x + cmd->w / 2, cmd->y + cmd->h / 2, cmd->w / 2, 64);
 }
 
 NK_INTERN void nk_cnfg_arc_cmd(const struct nk_command_arc* cmd, struct nk_context* ctx)
@@ -575,7 +574,7 @@ NK_INTERN void nk_cnfg_arc_cmd(const struct nk_command_arc* cmd, struct nk_conte
 
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
 	CNFGColor(color);
-	CNFGTackArc(cmd->cx, cmd->cy, cmd->r, cmd->a[0], cmd->a[1], 32); // Use 32 segments for a smooth arc
+	CNFGTackArc(cmd->cx, cmd->cy, cmd->r, cmd->a[0], cmd->a[1], 64);
 }
 
 NK_INTERN void nk_cnfg_arc_filled_cmd(const struct nk_command_arc_filled* cmd, struct nk_context* ctx)
@@ -585,7 +584,7 @@ NK_INTERN void nk_cnfg_arc_filled_cmd(const struct nk_command_arc_filled* cmd, s
 
 	uint32_t color = NK_CNFG_COLOR(cmd->color);
 	CNFGColor(color);
-	CNFGTackFilledArc(cmd->cx, cmd->cy, cmd->r, cmd->a[0], cmd->a[1], 32); // Use 32 segments for a smooth filled arc
+	CNFGTackFilledArc(cmd->cx, cmd->cy, cmd->r, cmd->a[0], cmd->a[1], 64); 
 }
 
 NK_INTERN void nk_cnfg_triangle_cmd(const struct nk_command_triangle* cmd, struct nk_context* ctx)
@@ -863,8 +862,11 @@ void nk_cnfg_input_button(struct nk_context* ctx, int x, int y, int button, int 
 	{
 		case 1:
 		{
+			if (!bDown)
+			{
+				nk_input_button(ctx, NK_BUTTON_DOUBLE, x, y, 0);
+			}
 			nk_input_button(ctx, NK_BUTTON_LEFT, x, y, bDown);
-			return;
 		} break;
 		case 2:
 		{
@@ -877,14 +879,6 @@ void nk_cnfg_input_button(struct nk_context* ctx, int x, int y, int button, int 
 		default:
 		{
 		} break;
-	}
-	if (bDown)
-	{
-		SetCapture(CNFGlsHWND);
-	}
-	else
-	{
-		ReleaseCapture();
 	}
 }
 
