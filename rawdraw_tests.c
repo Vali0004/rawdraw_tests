@@ -20,6 +20,7 @@
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_IMPLEMENTATION
 #define NK_CNFG_IMPLEMENTATION
+#define NK_INCLUDE_DEFAULT_FONT
 #include "nuklear.h"
 #include "nk_cnfg.h"
 
@@ -41,7 +42,7 @@ int HandleDestroy()
 	return 0;
 }
 
-struct nk_cnfg_font* default_font;
+struct nk_colorf bg_color;
 int main()
 {
 	struct nk_context _ctx;
@@ -49,8 +50,7 @@ int main()
 
 	nk_cnfg_init("Nuklear + RawDraw", WINDOW_WIDTH, WINDOW_HEIGHT, ctx);
 
-	default_font = nk_cnfg_font_load_from_file("Roboto-Regular.ttf", 20.f);
-	nk_cnfg_set_font(ctx, default_font);
+	nk_cnfg_set_bg_color_ref(&bg_color);
 
 	printf("Init nuklear and RawDraw\n");
 

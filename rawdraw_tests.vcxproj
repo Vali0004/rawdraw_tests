@@ -156,6 +156,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nk_cnfg.h" />
+    <ClInclude Include="nk_decompression.h" />
     <ClInclude Include="Nuklear\nuklear.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
